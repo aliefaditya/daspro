@@ -1,0 +1,746 @@
+program fokusdap;
+
+uses crt;
+{tipe bentukan agar mempermudah pemberian suatu nilai}
+type mahasiswa = record nama: string;
+                        kelas: string;
+                        NIM : real;
+                        tahunmasuk : integer;
+                        jurusan : string;
+end;
+type kalkulasi_nilai = record kehadiran : real;
+                              nilai     : real;
+                              praktikum : real;
+                              uts       : real;
+                              uas       : real;
+                              kuis      : real;
+
+end;
+type ortu       = record namaayah : string;
+                         namaibu  : string;
+                         umurayah : integer;
+                         umuribu  : integer;
+                         pekerjaanayah : integer;
+                         pekerjaanibu : integer;
+                         gajiayah : real;
+                         gajiibu  : real;
+                         gajitotal : real;
+
+                    lokasiayah : string;
+                         lokasiibu: string;
+end;
+type banding    = record nilai : real;
+                         skala : real;
+                         uts   : real;
+                         uas   : real;
+                         kuis  : real;
+                         praktikum : real;
+end;
+type dataakhir  = record kumpulan : string;
+end;
+const N = 999999;
+type tabel = array [1..N] of integer;
+type mhsnama = array[1..10] of string;
+type nilaitampung = array[1..N] of real;
+type bandingtampung = array[1..N] of real;
+var
+  data: array [1..N] of mahasiswa; //angka 5 juta, merupakan batas maksimum pengeluaran beasiswa
+  dataortu : array [1..N] of ortu;
+  datanilai : array [1..N] of kalkulasi_nilai;
+  databanding : array[1..N] of banding;
+  act,j,g,banyak_data,x,i,frek,nilai,a:integer;
+  keterangan,cc : char;
+  myfile : text; //tipe data pada teks file
+  namaaa, filename, texttmp,keteranganpekerjaanayah,keteranganpekerjaanibu : string;
+  tempNIM,cekNIM,keteranganNilai, keteranganBanding, nilaitotal,nKuisinput,nKuisoutput,nUtsinput,nUtsoutput,nUasinput,nUasoutput,nPresensi,nPresensioutput,kehadiran,praktek: real;
+  praktikum,nPraktikum,panggil : tabel;
+  tukarnama : mhsnama;
+  nilaitotalpraktikum,nPraktikumoutput,nPresensiulang,ketSkala : real;
+  pitachar : file of char;
+  arsipmhs : text;
+  rekmhs : dataakhir;
+  nTampung : nilaitampung;
+  bTampung : bandingtampung;
+
+  function pilihan(pekerjaan: integer) : string;
+  {I.S menerima input angka untuk variabel pekerjaan}
+  {F.S mengeluarkan nilai dari angka tersebut berupa string dari pekerjaan}
+    begin
+        case pekerjaan of
+          1 : pilihan := 'Berwirausaha';
+          2 : pilihan := 'Bewiraswasta';
+          3 : pilihan := 'PNS';
+    end;
+  end;
+
+  procedure pilihpekerjaan;
+  {I.S procedure sebagai indikator untuk menampilkan list pekerjaan}
+  {F.S user akan mengetahui list pekerjaan yang sesuai profesi dari kedua orang tua mahasiswa tersebut}
+    begin
+      writeln('1. Wirausaha');
+      writeln('2. Wiraswasta');
+      writeln('3. PNS');
+    end;
+
+  procedure aksi;
+  {I.S procedure sebagai indikator untuk menampilkan list alur program}
+  {F.S user akan memilih untuk program ini}
+    begin
+      writeln('1. Proses');
+      writeln('2. Tampil');
+      writeln('3. Keluar');
+    end;
+
+  procedure kontinu;
+  {I.S user akan press tombol enter sesuai keterangan}
+  {F.S user akan melakukan proses selanjutnya pada program ini}
+  begin
+    writeln;
+    filename := 'kontinu.txt';
+    assign(myfile, filename);
+    reset(myfile);
+    repeat
+      readln(myfile,texttmp);
+      writeln(texttmp);
+    until Eof(myfile);
+    close(myfile);
+    readln;
+  end;
+
+  procedure quit;
+  {I.S user akan press tombol enter sesuai keterangan}
+  {F.S user akan keluar dari program}
+  begin
+    writeln;
+    writeln;
+    write('Press <enter> To Quit');
+    readln;
+  end;
+
+  procedure loading;
+  {I.S sebagai indikator untuk proses selanjutnya}
+  {F.S user akan melakukan pengisian data}
+  var
+    q,w:integer;
+  begin
+    gotoxy(47,10);
+    writeln('Loading..');
+    gotoxy(39,13);
+    writeln('-------------------------');
+    gotoxy(39,14);
+    writeln('|');
+    gotoxy(60,14);
+    writeln('|');
+    gotoxy(39,14);
+    writeln('--------------------------');
+    for q:=1 to 100 do
+      begin
+        delay(30);
+        gotoxy(48,12);
+        writeln(q,' %');
+        if (q mod 5=0) then
+          begin
+            w:=w+1;
+            gotoxy(39+w,14);
+            writeln('=');
+          end;
+      end;
+  end;
+
+  procedure format;
+  {I.S menampilkan keterangan terhadap format yang diinput tidak sesuai ketetuan}
+  {F.S user akan menginput kembali nilai sesuai ketentuan}
+  begin
+    textcolor(4);
+    writeln('!!!!!!!!!!!!!!!!!!!!!');
+    writeln(' Format Nilai Salah');
+    writeln('!!!!!!!!!!!!!!!!!!!!!');
+  end;
+
+  procedure formatnim;
+  {I.S menampilkan keterangan terhadap NIM yang diinput sama}
+  {F.S user akan menginput kembali nilai NIM}
+    begin
+      textcolor(4);
+      write('NIM harus berbeda');
+    end;
+
+  procedure nilaitotalutsmhs (uts: real;var nilaitotaluts : real);
+    {I.S menerima nilai uts untuk diproses berdasarkan perhitungan yang berlaku}
+    {F.S mengeluarkan nilai total uts}
+    begin
+      if (uts<=100) then
+        begin
+          nilaitotaluts := uts*0.2;
+        end
+      else if((uts<=0)and(uts>100)) then
+        begin
+          nilaitotaluts := 0;
+        end;
+    end;
+
+  procedure nilaitotalkuismhs (kuis: real; var nilaitotalkuis : real);
+    {I.S menerima nilai kuis untuk diproses berdasarkan perhitungan yang berlaku}
+    {F.S mengeluarkan nilai total kuis}
+    begin
+      if (kuis<=100) then
+        begin
+          nilaitotalkuis := kuis*0.2;
+        end
+      else if ((kuis<=0)and(kuis>100)) then
+        begin
+          nilaitotalkuis := 0;
+        end;
+    end;
+
+  procedure nilaitotalpraktikummhs(praktikum: tabel;var nilaitotalpraktikum: real);
+    {I.S menerima nilai praktikum untuk diproses berdasarkan perhitungan yang berlaku}
+    {F.S mengeluarkan nilai total praktikum}
+    var
+      count : integer;
+      jumnilaipraktikum : real;
+    begin
+      jumnilaipraktikum := 0;
+             for count := 1 to 10 do
+               begin
+                 jumnilaipraktikum := jumnilaipraktikum + praktikum[count];
+              end;
+      nilaitotalpraktikum := (jumnilaipraktikum*0.2)/10;
+    end;
+
+   procedure nilaitotaluasmhs (uas: real; var nilaitotaluas : real);
+    {I.S menerima nilai uas untuk diproses berdasarkan perhitungan yang berlaku}
+    {F.S mengeluarkan nilai total uas}
+    begin
+      if (uas<=100) then
+        begin
+          nilaitotaluas := uas*0.2;
+        end
+      else if ((uas<=0)and(uas>100)) then
+        begin
+          nilaitotaluas := 0;
+        end;
+    end;
+
+  procedure nilaitotalpresensimhs (presensi: real;var output: real);
+    {I.S menerima nilai presensi untuk diproses berdasarkan perhitungan yang berlaku}
+    {F.S mengeluarkan nilai total presensi}
+    var
+      nilaitotalpresensi : integer;
+      rumus,presensiulang : real;
+    begin
+      nilaitotalpresensi := 33;
+      output := 0;
+      if ((presensi>=26)and(presensi<=nilaitotalpresensi)) then
+        begin
+          presensi := presensi/33;
+          rumus := ((presensi*0.2)*100);
+          output := rumus;
+        end
+      else if ((presensi>=15)and(presensi<=25)) then
+        begin
+          presensi := presensi/33;
+          rumus := ((presensi*0.2)*100);
+          output := rumus;
+        end
+      else if ((presensi>=5)and(presensi<=14)) then
+        begin
+          presensi := presensi/33;
+          rumus := ((presensi*0.2)*100);
+          output := rumus;
+        end
+      else if((presensi>=0)and(presensi<=5)) then
+        begin
+          presensi := presensi/33;
+          rumus := ((presensi*0.2)*100);
+          output := rumus;
+        end
+      else if ((presensi<0)or(presensi>33)) then
+        begin
+          repeat
+            presensiulang := presensi/33;
+            rumus := ((presensiulang*0.2)*100);
+            output := rumus;
+          until ((presensi >= 0) and (presensi <= 33));
+        end;
+    end;
+
+  function nilaibanding(nilaitotaluts,nilaitotaluas,output,nilaitotalpraktikum,nilaitotalkuis: real) : real;
+    {I.S menerima nilai untuk setiap komponen nilai mata kuliah DAP}
+    {F.S menjumlahkan untuk setiap nilai komponen tersebut}
+    begin
+      nilaibanding := ((nilaitotaluts*0.1)+(nilaitotaluas*0.2)+(output*0.05)+(nilaitotalpraktikum*0.2)+(nilaitotalkuis*0.05));
+    end;
+
+  function skala(a,perhitungan: real) : real;
+    {I.S menerima nilai banding dan perhitungan gaji total orang tua}
+    {F.S mengeluarkan nilai skala untuk dibandingkan pada mahasiswa lainnya}
+    begin
+      if (perhitungan >= 3648035) then
+        begin
+          skala := (a + 15)/2;
+        end
+      else if ((perhitungan >= 3355750) and (perhitungan < 3648035)) then//UMR
+        begin
+         skala := (a + 25)/2;
+        end
+      else if ((perhitungan >= 1327965) and (perhitungan < 3355750)) then
+        begin
+         skala := (a + 35)/2;
+        end
+      else if((perhitungan < 13227965) and (perhitungan >= 0)) then
+        begin
+         skala := (a + 45)/2;
+        end;
+    end;
+
+  procedure listbeasiswa;
+  {I.S indikator jumlah beasiswa}
+  {F.S user mengetahui jumlah beasiswa dari file listbeasiswa yang tertera}
+    begin
+      filename := 'listbeasiswa.txt';
+      assign(myfile, filename);
+      //reset berfungsi untuk membaca dari isi file tersebut
+      reset (myfile);
+      repeat
+        readln(myfile,texttmp);
+        writeln(texttmp);
+        //fungsi untuk membaca file yang tidak diketahui jumlah barisnya
+      until Eof(myfile);
+      close(myfile);
+    end;
+
+  procedure tampil;
+  {I.S indikator jumlah beasiswa}
+  {F.S user mengetahui hasil proses dari daftar penerimaan beasiswa}
+    begin
+      filename := 'dataakhir.txt';
+      assign(myfile, filename);
+      //reset berfungsi untuk membaca dari isi file tersebut
+      reset (myfile);
+      repeat
+        readln(myfile,texttmp);
+        writeln(texttmp);
+        //fungsi untuk membaca file yang tidak diketahui jumlah barisnya
+      until Eof(myfile);
+      close(myfile);
+    end;
+
+  procedure SEQSearch(n:integer;score:nilaitampung;scale:bandingtampung;var IX: integer);
+    {I.S mencari nilai index dari skala dan nilai <> 0}
+    {F.S menampilkan frekuensi yang nilai index <> 0 dan diproses untuk sorting}
+    begin
+      IX := 0;
+      for i:=1 to n do
+        begin
+          if((score[i]<>0)and(scale[i]<>0))then
+            begin
+              IX := i;
+            end;
+        end;
+    end;
+
+  procedure sort(n: integer; var tukarnama:mhsnama ;var tabint: tabel);
+  {I.S menerima nilai batas dari banyak data}
+  {F.S mengeluarkan urutan nilai skala secara ascending berdasarkan nama dan nilai}
+  //n adalah batas
+  var
+    i,k,pass,temp : integer;
+    tempname : string;
+    begin
+      for pass := 1 to (n-1) do
+        begin
+          for k:= n downto (pass+1) do
+            begin
+              if(tabint[k] > tabint[k-1]) then
+                begin
+                  tempname := tukarnama[k];
+                  tukarnama[k] := tukarnama[k-1];
+                  tukarnama[k-1] := tempname;
+                  temp := tabint[k];
+                  tabint[k] := tabint[k-1];
+                  tabint[k-1] := temp;
+                end;
+            end;
+        end;
+    end;
+
+    procedure START;
+    {I.S user akan menampilkan isi dari file teks judul}
+    {F.S ditampilkan isi dari file teks judul ke layar}
+    begin
+      assign(pitachar, 'judul.txt');
+      reset(pitachar);
+      read(pitachar,cc);
+    end;
+
+    procedure ADV;
+    {I.S untuk setiap karakter pada file akan dibaca}
+    {F.S mengeluarkan setiap karakter yang terbaca}
+    begin
+      read(pitachar,cc);
+    end;
+
+    function EOP:boolean;
+    {I.S mengatur perulangan pembacaan karakter}
+    {F.S pembacaan karakter berhenti pada kondisi akhir dari file}
+    begin
+      if EOF(pitachar) then
+        begin
+          EOP := true;
+        end
+      else
+        begin
+          EOP := false;
+        end;
+    end;
+
+//main program
+BEGIN
+  textbackground(white);//4 bernilai untuk warna merah
+  textcolor(black);
+
+  clrscr;
+  START;                    //mesin karakter untuk judul
+  write(cc, '');
+  while(not (EOP)) do
+    begin
+      ADV;
+      write(cc, '');
+    end;
+  kontinu;
+  clrscr;
+  aksi;
+  writeln('Program: ');
+  readln(act);
+  clrscr;
+  if (act=1) then
+  begin
+  clrscr;
+  writeln('================================');
+  write('Banyak siswa yang akan diproses: ');
+  readln(banyak_data);
+  writeln('================================');
+  for i := 1 to banyak_data do
+    begin
+      writeln('-----------------------  ');
+      writeln('    Data Mahasiswa ',i     );
+      writeln('-----------------------  ');
+      write('Nama mahasiswa: ');
+      readln(data[i].nama); //data akan dibaca pada tipe bentukan nama
+      delay(100);
+      write('NIM           : ');
+      readln(data[i].NIM);//data akan dibaca pada tipe bentukan NIM
+      if (i=2) then
+        begin
+          if(cekNIM = data[i].NIM) then
+            begin
+              repeat
+                formatnim;
+                textcolor(15);
+                writeln;
+                write('NIM           : ');
+                readln(data[i].NIM);
+              until data[i].NIM <> cekNIM;
+            end;
+          tempNIM := data[i].NIM
+        end;
+      if (i=3) then
+        begin
+          if(tempNIM = data[i].NIM)and(cekNIM = data[i].NIM) then
+            begin
+             repeat
+                formatnim;
+                textcolor(15);
+                writeln;
+                write('NIM           : ');
+                readln(data[i].NIM);
+              until (data[i].NIM <> cekNIM) and (data[i].NIM<>tempNIM);
+            end;
+        end;
+      cekNIM := data[i].NIM;
+      write('Tahun masuk   : ');
+      readln(data[i].tahunmasuk);
+      if ((data[i].tahunmasuk<2011)or(data[i].tahunmasuk>2017)) then
+        begin
+          textcolor(4);
+          writeln('Tahun masuk tidak sesuai syarat & ketentuan ');
+          writeln(data[i].nama,' akan diikutkan peserta beasiswa pada kesempatan selanjutnya');
+          textcolor(15);
+
+        end
+      else
+        begin
+          write('Jurusan       : ');
+          readln(data[i].jurusan);
+          if((data[i].jurusan<>'informatika')and(data[i].jurusan<>'Informatika')and(data[i].jurusan<>'INFORMATIKA')) then
+            begin
+             writeln('Jurusan tidak sesuai syarat & ketentuan ');
+             writeln(data[i].nama,' akan diikutkan peserta beasiswa pada kesempatan selanjutnya');
+
+            end
+          else
+            begin
+            write('Kelas         : ');
+            readln(data[i].kelas);
+                writeln;
+                writeln('Tekan <enter> untuk mengisi data nilai ');
+                readln;
+                writeln;
+
+                clrscr;
+                writeln('==================================================');
+                writeln('       Data nilai mahasiswa bernama ',data[i].nama);
+                writeln('==================================================');
+                writeln('Nilai kuis,uts,uas,dan praktikum berskala : 0 - 100');
+                writeln('Skala Presensi                            : 0 - 33');
+                writeln('--------------------------------------------------');
+                write('Nilai Kuis             : ');
+                readln(nKuisinput);
+                if ((nKuisinput<0)or(nKuisinput>100)) then
+                  begin
+                    repeat
+                      begin
+                        textcolor(4);format;
+                        textcolor(black);
+                        readln(nKuisinput);
+                      end;
+                    until ((nKuisinput>=0)and(nKuisinput<=100));
+                  end;
+                nilaitotalkuismhs(nKuisinput,nKuisoutput);
+                datanilai[i].kuis := nKuisoutput;
+
+                writeln;
+                write('Nilai UTS              : ');
+                readln(nUtsinput);
+                if ((nUtsinput<0)or(nUtsinput>100)) then
+                  begin
+                    repeat
+                      begin
+                        textcolor(4);format;
+                        textcolor(black);
+                        write('Nilai UTS              : ');
+                        readln(nUtsinput);
+                      end;
+                    until ((nUtsinput>=0)and(nUtsinput<=100));
+                  end;
+                nilaitotalutsmhs(nUtsinput,nUtsoutput);
+                datanilai[i].uts := nUtsoutput;
+
+                writeln;
+                write('Nilai UAS              : ');
+                readln(nUasinput);
+                if ((nUasinput<0)or(nUasinput>100)) then
+                  begin
+                    repeat
+                      begin
+                        textcolor(4);format;
+                        textcolor(black);
+                        write('Nilai UAS              : ');
+                        readln(nUasinput);
+                      end;
+                    until ((nUasinput>=0)and(nUasinput<=100));
+                  end;
+                nilaitotaluasmhs(nUasinput, nUasoutput);
+                datanilai[i].uas := nUasoutput;
+
+                writeln;
+                write('Presensi               : ');
+                readln(nPresensi);
+                if((nPresensi<0)or(nPresensi>33)) then
+                  begin
+                    repeat
+                      begin
+                        textcolor(4);format;
+                        textcolor(black);
+                        write('Presensi               : ');
+                        readln(nPresensi);
+                      end;
+                    until ((nPresensi >= 0) and (nPresensi<=33));
+                  end;
+                nilaitotalpresensimhs(nPresensi, nPresensioutput);
+                datanilai[i].kehadiran := nPresensioutput;
+                writeln;
+
+                for x := 1 to 10 do  //x adalah jumlah praktikum dalam semester 1 ini
+                  begin
+                    write('Nilai Praktikum - ',x,'    : ');
+                    readln(nPraktikum[x]);
+                    if ((nPraktikum[x]<0)or(nPraktikum[x]>100)) then
+                      begin
+                        repeat
+                          begin
+                            textcolor(4);format;
+                            textcolor(black);
+                            write('Nilai Praktikum - ', x ,'    : ');
+                            readln(nPraktikum[x]);
+                          end;
+                        until ((nPraktikum[x] >= 0) and (nPraktikum[x]<=100));
+                      end;
+                    nilaitotalpraktikummhs(nPraktikum,nPraktikumoutput);
+                  end;
+                  datanilai[i].praktikum := nPraktikumoutput;
+
+                //mencari perhitungan untuk membandingkan
+                databanding[i].nilai := nilaibanding(nUtsoutput,nUasoutput,nPresensioutput,nPraktikumoutput,nKuisoutput);
+                keteranganBanding    := nilaibanding(nUtsoutput,nUasoutput,nPresensioutput,nPraktikumoutput,nKuisoutput);
+                datanilai[i].nilai   := datanilai[i].uts + datanilai[i].uas + datanilai[i].praktikum + datanilai[i].kuis + datanilai[i].kehadiran ;
+
+
+                writeln('------------------------------------------');
+                writeln('Nilai total ',data[i].nama,': ',datanilai[i].nilai:0:0);
+                writeln('------------------------------------------');
+                kontinu;
+                clrscr;
+                writeln('-----------------------  ');
+                writeln(' Data Orang Tua  ',data[i].nama);
+                writeln('-----------------------  ');
+                write('Nama ayah        : ');
+                readln(dataortu[i].namaayah); //data akan dibaca pada tipe bentukan nama orang tua
+                write('Umur ayah        : ');
+                readln(dataortu[i].umurayah);
+                pilihpekerjaan;
+                write('Pekerjaan ayah   : ');
+                readln(dataortu[i].pekerjaanayah);
+                keteranganpekerjaanayah := (pilihan(dataortu[i].pekerjaanayah));
+                writeln('Profesi          : ',keteranganpekerjaanayah);
+                write('Tempat Kerja ayah: ');
+                readln(dataortu[i].lokasiayah);
+                write('Penghasilan ayah : ');
+                readln(dataortu[i].gajiayah);
+                writeln;
+                write('Nama ibu         : ');
+                readln(dataortu[i].namaibu); //data akan dibaca pada tipe bentukan nama orang tua
+                write('Umur ibu         : ');
+                readln(dataortu[i].umuribu);
+                pilihpekerjaan;
+                write('Pekerjaan ibu    : ');
+                readln(dataortu[i].pekerjaanibu);
+                keteranganpekerjaanibu := (pilihan(dataortu[i].pekerjaanibu));
+                writeln('Profesi          : ',keteranganpekerjaanibu);
+                write('Tempat Kerja ibu : ');
+                readln(dataortu[i].lokasiibu);
+                write('Penghasilan ibu  : ');
+                readln(dataortu[i].gajiibu);
+                dataortu[i].gajitotal := dataortu[i].gajiayah + dataortu[i].gajiibu;
+                databanding[i].skala := (skala(databanding[i].nilai,dataortu[i].gajitotal));
+                write('Gaji Total: ');
+                write(dataortu[i].gajitotal:0:0);
+                write(databanding[i].skala);
+                writeln;
+                cekNIM := data[i].NIM;
+                kontinu;
+                clrscr;
+            end;
+        end;
+      end;
+    clrscr;
+    loading;
+    clrscr;
+    writeln('                                D A T A   O R A N G   T U A                                 ');
+    writeln('____________________________________________________________________________________________');
+    writeln('No.    |         Anak          |       Ayah       |       Ibu          |       Penghasilan |');
+    writeln('--------------------------------------------------------------------------------------------');
+    for a:=1 to banyak_data do
+      begin
+        writeln(a,'.     | ',data[a].nama:1,'                 | ':1,dataortu[a].namaayah,'      | ':1,' ':10,dataortu[a].namaibu,'   | ',dataortu[a].gajitotal:0:0,'   | ');
+      end;
+
+
+    writeln;//space
+
+    writeln('                                 D A T A  M A H A S I S W A                                 ');
+    writeln('____________________________________________________________________________________________');
+    writeln('No.    |         Nama          |       NIM       |       Kelas          |       Nilai      |');
+    writeln('--------------------------------------------------------------------------------------------');
+    for a:=1 to banyak_data do
+      begin
+        if (((data[a].tahunmasuk>=2011)and(data[a].tahunmasuk<=2017))and((data[a].jurusan='informatika')or(data[a].jurusan='Informatika')or(data[a].jurusan='INFORMATIKA'))) then
+          begin
+            writeln(a,'.     | ',data[a].nama:1,'                 | ':1,data[a].NIM:0:0,'      | ':1,' ':10,data[a].kelas,'   | ',datanilai[a].nilai:0:0,'   | ',databanding[a].skala:2:0);
+            nTampung[a] := datanilai[a].nilai;
+            bTampung[a] := databanding[a].skala;
+          end;
+      end;
+
+
+    writeln;
+    //Search databanding dan datanilai <> 0
+    SEQSearch(banyak_data,nTampung,bTampung,frek);
+    if (frek>=1) then
+      begin
+        writeln(frek);
+        listbeasiswa;
+        writeln;
+        writeln('===================');
+        writeln('     Konfirmasi    ');
+        writeln('===================');
+        g := banyak_data;
+        for a:= 1 to frek do
+        begin
+                write('Nama Mahasiswa ',a,': ');
+                readln(tukarnama[a]);
+                write('Skala ',tukarnama[a],'    : ');
+                readln(panggil[a]);
+                writeln;
+        end;
+        sort(g,tukarnama,panggil);//sorting
+        writeln;
+        writeln('---DESCENDING SKALA---');
+        j:=1;
+        while (j<=frek) do
+        begin
+        assign(arsipmhs,'dataakhir.txt');
+        writeln;
+        append(arsipmhs);
+          if (j=1)then
+            begin
+              writeln(arsipmhs,tukarnama[j],' dengan skala ',panggil[j],' ,maka akan mendapatkan beasiswa sebesar Rp.5.000.000');
+              writeln(tukarnama[j],' dengan skala ',panggil[j],' ,maka akan mendapatkan beasiswa sebesar Rp.5.000.000');
+            end
+          else if(j=2) then
+            begin
+
+              writeln(arsipmhs,tukarnama[j],' dengan skala ',panggil[j],' ,maka akan mendapatkan beasiswa sebesar Rp.3.000.000');
+              writeln(tukarnama[j],' dengan skala ',panggil[j],' ,maka akan mendapatkan beasiswa sebesar Rp.3.000.000');
+            end
+          else if(j=3) then
+            begin
+
+              writeln(arsipmhs,tukarnama[j],' dengan skala ',panggil[j],' ,maka akan mendapatkan beasiswa sebesar Rp.2.000.000');
+              writeln(tukarnama[j],' dengan skala ',panggil[j],' ,maka akan mendapatkan beasiswa sebesar Rp.2.000.000');
+            end
+          else if(j=4) then
+            begin
+
+              writeln(arsipmhs,tukarnama[j],' dengan skala ',panggil[j],' ,maka akan mendapatkan beasiswa sebesar Rp.  500.000');
+              writeln(tukarnama[j],' dengan skala ',panggil[j],' ,maka akan mendapatkan beasiswa sebesar Rp.  500.000');
+            end
+          else
+            begin
+
+              writeln(arsipmhs,tukarnama[j],'  akan diikutkan pada kesempatan selanjutnya');
+              writeln(tukarnama[j],'  akan diikutkan pada kesempatan selanjutnya');
+            end;
+          close(arsipmhs);
+          inc(j);
+        end;
+    end
+    else
+      begin
+        writeln(arsipmhs,'Tidak ada mahasiswa yang mendapat beasiswa');
+      end;
+      writeln;
+      quit;
+    end
+   else if(act=2) then
+     begin
+       tampil;
+       quit;
+     end
+   else
+     begin
+       quit;
+     end;
+END.
+
